@@ -70,8 +70,11 @@ jobs:
         id: create-release
         if: ${{ !failure() }}
         uses: softprops/action-gh-release@v1
+        env:
+          TIMESTAMP: $(date +'%Y-%m-%d_%H:%M:%S')
         with:
-          name: $(date +'%Y-%m-%d_%H:%M:%S')
+          name: $TIMESTAMP
+          tag_name: $TIMESTAMP
 
       # Post a success/failure comment to the PR.
       - name: Add comment to PR
@@ -85,4 +88,4 @@ jobs:
             ${{ steps.create-release.outputs.url && ' Release created at: ' || '' }}
             ${{ steps.create-release.outputs.url && steps.create-release.outputs.url || '' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
