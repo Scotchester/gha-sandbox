@@ -1,19 +1,29 @@
 name: Merge to Production and Release
 # Credits:
 # - https://medium.com/@_samkitjain/override-githubs-merge-strategies-cea7eb789e23
+# - https://dev.to/zirkelc/trigger-github-workflow-for-comment-on-pull-request-45l2
 # - https://stackoverflow.com/a/73907863/279566
 
 on:
-  pull_request_review:
-    types: [submitted]
+  issue_comment:
+    types: [created]
 
 jobs:
-  merge:
-    # Run only if the review was made on a PR to production
+  merge-and-release:
+    # Run only if:
+    # 1. The comment was made on a PR.
+    # 2. The comment was exactly "/merge".
+    # 3. The PR is open.
+    # 4. The comment was made by a member of our team.
     if: |
-      github.event.pull_request.base.ref == 'production' &&
-      github.event.pull_request.head.ref == 'main' &&
-      github.event.review.state == 'approved'
+      github.event.issue.pull_request &&
+      github.event.comment.body == '/merge' &&
+      github.event.issue.state == 'open' &&
+      contains(fromJSON('["addisonhardy", "laespinoza", "jamesray", "Scotchester", "stephiescastle"]'), github.event.comment.user.login)
+    # Run only if the review was made on a PR from main to production
+    # if: |
+    #   github.event.issue.pull_request.base.ref == 'production' &&
+    #   github.event.issue.pull_request.head.ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,25 +43,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      # Merge (rebase) the PR if it is allowed.
+      # Merge (fast-forward only) the PR if it is from main to production and is mergeable.
       - name: Merge PR
         id: merge-pr
         shell: bash
         env:
           MERGEABLE_STATUS: ${{ fromJson(steps.get-pr-details.outputs.data).mergeable_state }}
+          BASE_BRANCH: ${{ fromJson(steps.get-pr-details.outputs.data).base.ref }}
+          HEAD_BRANCH: ${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}
         run: |
-          if [ "$MERGEABLE_STATUS" = "clean" ]; then
+          if (( "$MERGEABLE_STATUS" == "clean" && "$HEAD_BRANCH" == "main" && "$BASE_BRANCH" == "production" )); then
             git config --global user.email "<>"
             git config --global user.name "GitHub Actions"
-            git checkout main
-            git pull origin main
-            git checkout production
-            git pull origin production
-            git merge main --ff-only
-            git push origin production
-            echo "MERGE_RESULT='Pull request has been merged and will be deployed to production shortly.'" >> $GITHUB_OUTPUT
+            git checkout $HEAD_BRANCH
+            git pull origin $HEAD_BRANCH
+            git checkout $BASE_BRANCH
+            git pull origin $BASE_BRANCH
+            git merge $HEAD_BRANCH --ff-only
+            git push origin $BASE_BRANCH
+            echo "MERGE_RESULT='Pull request has been merged and will be deployed to Production shortly.'" >> $GITHUB_OUTPUT
           else
-            echo "MERGE_RESULT='Pull request was approved before being mergeable. Please rectify and try again.'" >> $GITHUB_OUTPUT
+            echo "MERGE_RESULT='Merge command failed. This PR is either not yet mergeable or is not from main to production.'" >> $GITHUB_OUTPUT
           fi
 
       # Create a new release if no previous steps failed.
