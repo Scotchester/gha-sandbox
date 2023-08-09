@@ -39,6 +39,8 @@ jobs:
           route: GET /repos/{repository}/pulls/{pull_number}
           repository: ${{ github.repository }}
           pull_number: ${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Merge (fast-forward only) the PR if it is from main to production and is mergeable.
       - name: Merge PR
