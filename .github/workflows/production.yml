@@ -64,11 +64,11 @@ jobs:
             git pull origin $BASE_BRANCH
             git merge $HEAD_BRANCH --ff-only
             git push origin $BASE_BRANCH
-            echo "COMMENT='Pull request has been merged and will be deployed to Production shortly.'" >> $GITHUB_OUTPUT
+            echo "COMMENT=Pull request has been merged and will be deployed to Production shortly." >> $GITHUB_OUTPUT
             echo "MERGE_RESULT='merged'" >> $GITHUB_OUTPUT
           else
             echo "merge conditions failed"
-            echo "COMMENT='Merge command failed. This PR is either not yet mergeable or is not from main to production.'" >> $GITHUB_OUTPUT
+            echo "COMMENT=Merge command failed. This PR is either not yet mergeable or is not from main to production." >> $GITHUB_OUTPUT
             echo "MERGE_RESULT='not merged'" >> $GITHUB_OUTPUT
           fi
 
