@@ -12,18 +12,14 @@ jobs:
   merge-and-release:
     # Run only if:
     # 1. The comment was made on a PR.
-    # 2. The comment was exactly "/merge".
+    # 2. The comment was exactly "PTS".
     # 3. The PR is open.
     # 4. The comment was made by a member of our team.
     if: |
       github.event.issue.pull_request &&
-      github.event.comment.body == '/merge' &&
+      github.event.comment.body == 'PTS' &&
       github.event.issue.state == 'open' &&
       contains(fromJSON('["addisonhardy", "laespinoza", "jamesray", "Scotchester", "stephiescastle"]'), github.event.comment.user.login)
-    # Run only if the review was made on a PR from main to production
-    # if: |
-    #   github.event.issue.pull_request.base.ref == 'production' &&
-    #   github.event.issue.pull_request.head.ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,9 +35,7 @@ jobs:
         id: get-pr-details
         uses: octokit/request-action@v2.x
         with:
-          route: GET /repos/{repository}/pulls/{pull_number}
-          repository: ${{ github.repository }}
-          pull_number: ${{ github.event.issue.number }}
+          route: GET /repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -55,7 +49,7 @@ jobs:
           HEAD_BRANCH: ${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}
         run: |
           if [[ "$MERGEABLE_STATUS" == "clean" && "$HEAD_BRANCH" == "main" && "$BASE_BRANCH" == "production" ]]; then
-            echo "merge conditions passed"
+            echo "✅ merge conditions passed"
             git config --global user.email "<>"
             git config --global user.name "GitHub Actions"
             git checkout $HEAD_BRANCH
@@ -67,15 +61,10 @@ jobs:
             echo "COMMENT=Pull request has been merged and will be deployed to Production shortly." >> $GITHUB_OUTPUT
             echo "MERGE_RESULT=merged" >> $GITHUB_OUTPUT
           else
-            echo "merge conditions failed"
+            echo "❌ merge conditions failed"
             echo "COMMENT=Merge command failed. This PR is either not yet mergeable or is not from main to production." >> $GITHUB_OUTPUT
             echo "MERGE_RESULT=not merged" >> $GITHUB_OUTPUT
           fi
-
-      - name: Dump steps context
-        env:
-          STEPS_CONTEXT: ${{ toJson(steps) }}
-        run: echo "$STEPS_CONTEXT"
 
       # Create a new release if no previous steps failed and the PR was merged.
       - name: Create Release
