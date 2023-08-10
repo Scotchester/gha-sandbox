@@ -72,6 +72,11 @@ jobs:
             echo "MERGE_RESULT='not merged'" >> $GITHUB_OUTPUT
           fi
 
+      - name: Dump steps context
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+
       # Create a new release if no previous steps failed and the PR was merged.
       - name: Create Release
         id: create-release
