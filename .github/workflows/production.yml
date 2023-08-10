@@ -51,7 +51,7 @@ jobs:
           BASE_BRANCH: ${{ fromJson(steps.get-pr-details.outputs.data).base.ref }}
           HEAD_BRANCH: ${{ fromJson(steps.get-pr-details.outputs.data).head.ref }}
         run: |
-          if (( "$MERGEABLE_STATUS" == "clean" && "$HEAD_BRANCH" == "main" && "$BASE_BRANCH" == "production" )); then
+          if [[ "$MERGEABLE_STATUS" == "clean" && "$HEAD_BRANCH" == "main" && "$BASE_BRANCH" == "production" ]]; then
             git config --global user.email "<>"
             git config --global user.name "GitHub Actions"
             git checkout $HEAD_BRANCH
@@ -60,15 +60,17 @@ jobs:
             git pull origin $BASE_BRANCH
             git merge $HEAD_BRANCH --ff-only
             git push origin $BASE_BRANCH
-            echo "MERGE_RESULT='Pull request has been merged and will be deployed to Production shortly.'" >> $GITHUB_OUTPUT
+            echo "COMMENT='Pull request has been merged and will be deployed to Production shortly.'" >> $GITHUB_OUTPUT
+            echo "MERGE_RESULT='true'" >> $GITHUB_OUTPUT
           else
-            echo "MERGE_RESULT='Merge command failed. This PR is either not yet mergeable or is not from main to production.'" >> $GITHUB_OUTPUT
+            echo "COMMENT='Merge command failed. This PR is either not yet mergeable or is not from main to production.'" >> $GITHUB_OUTPUT
+            echo "MERGE_RESULT='false'" >> $GITHUB_OUTPUT
           fi
 
       # Create a new release if no previous steps failed.
       - name: Create Release
         id: create-release
-        if: ${{ !failure() }}
+        if: ${{ !failure() }} && ${{ steps.merge-pr.outputs.MERGE_RESULT }}
         uses: softprops/action-gh-release@v1
         env:
           TIMESTAMP: $(date +'%Y-%m-%d_%H:%M:%S')
@@ -84,7 +86,7 @@ jobs:
           repository: ${{ github.repository }}
           issue_number: ${{ github.event.issue.number }}
           body: |
-            ${{ steps.merge-pr.outputs.MERGE_RESULT }}
+            ${{ steps.merge-pr.outputs.COMMENT }}
             ${{ steps.create-release.outputs.url && ' Release created at: ' || '' }}
             ${{ steps.create-release.outputs.url && steps.create-release.outputs.url || '' }}
         env:
