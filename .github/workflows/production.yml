@@ -31,6 +31,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set current date as environment variable
+        run: echo "TIMESTAMP=$(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_ENV
+
       # Get details of the PR, specifically whether the PR can be merged in or not.
       - name: Get PR details
         id: get-pr-details
@@ -70,10 +73,8 @@ jobs:
       # Create a new release if no previous steps failed.
       - name: Create Release
         id: create-release
-        if: ${{ !failure() }} && ${{ steps.merge-pr.outputs.MERGE_RESULT }} != 'false'
+        if: ${{ !failure() && steps.merge-pr.outputs.MERGE_RESULT != 'false' }}
         uses: softprops/action-gh-release@v1
-        env:
-          TIMESTAMP: $(date +'%Y-%m-%d_%H:%M:%S')
         with:
           name: ${{ env.TIMESTAMP }}
           tag_name: ${{ env.TIMESTAMP }}
@@ -89,3 +90,4 @@ jobs:
 
             ${{ steps.create-release.outputs.url && 'Release created at: ' || 'No release has been created.' }}
             ${{ steps.create-release.outputs.url && steps.create-release.outputs.url || '' }}
+            
