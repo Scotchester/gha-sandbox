@@ -70,24 +70,22 @@ jobs:
       # Create a new release if no previous steps failed.
       - name: Create Release
         id: create-release
-        if: ${{ !failure() }} && ${{ steps.merge-pr.outputs.MERGE_RESULT }}
+        if: ${{ !failure() }} && ${{ steps.merge-pr.outputs.MERGE_RESULT }} != 'false'
         uses: softprops/action-gh-release@v1
         env:
           TIMESTAMP: $(date +'%Y-%m-%d_%H:%M:%S')
         with:
-          name: $TIMESTAMP
-          tag_name: $TIMESTAMP
+          name: ${{ env.TIMESTAMP }}
+          tag_name: ${{ env.TIMESTAMP }}
+
 
       # Post a success/failure comment to the PR.
       - name: Add comment to PR
-        uses: octokit/request-action@v2.x
+        uses: peter-evans/create-or-update-comment@v3
         with:
-          route: POST /repos/{repository}/issues/{issue_number}/comments
-          repository: ${{ github.repository }}
-          issue_number: ${{ github.event.issue.number }}
+          issue-number: ${{ github.event.issue.number }}
           body: |
             ${{ steps.merge-pr.outputs.COMMENT }}
-            ${{ steps.create-release.outputs.url && ' Release created at: ' || '' }}
+
+            ${{ steps.create-release.outputs.url && 'Release created at: ' || 'No release has been created.' }}
             ${{ steps.create-release.outputs.url && steps.create-release.outputs.url || '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
